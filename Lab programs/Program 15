@@ -1,0 +1,30 @@
+import nltk
+from nltk import PCFG
+from nltk.parse import ViterbiParser
+
+# Define PCFG
+grammar = PCFG.fromstring("""
+S -> NP VP [1.0]
+NP -> 'John' [0.5] | 'Mary' [0.5]
+VP -> V NP [0.7] | V [0.3]
+V -> 'likes' [0.6] | 'runs' [0.4]
+""")
+
+# Create parser
+parser = ViterbiParser(grammar)
+
+sentence = input("Enter sentence: ").split()
+
+print("\nMost Probable Parse Tree:")
+
+try:
+    found = False
+    for tree in parser.parse(sentence):
+        print(tree)
+        found = True
+
+    if not found:
+        print("Sentence cannot be parsed.")
+
+except ValueError:
+    print("Invalid words in grammar.")
