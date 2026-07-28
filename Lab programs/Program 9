@@ -1,0 +1,24 @@
+import re
+
+sentence = input("Enter a sentence: ").split()
+
+print("\nRule-Based POS Tags")
+
+for word in sentence:
+
+    if re.match(r'.*ing$', word):
+        tag = "VBG"
+
+    elif re.match(r'.*ed$', word):
+        tag = "VBD"
+
+    elif re.match(r'.*ly$', word):
+        tag = "RB"
+
+    elif re.match(r'.*s$', word):
+        tag = "NNS"
+
+    else:
+        tag = "NN"
+
+    print(word, ":", tag)
