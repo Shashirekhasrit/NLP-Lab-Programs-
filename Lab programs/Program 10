@@ -1,0 +1,23 @@
+sentence = input("Enter a sentence: ").split()
+tags = ["NN"] * len(sentence)
+
+print("\nInitial Tags")
+
+for word, tag in zip(sentence, tags):
+    print(word, ":", tag)
+
+for i in range(len(sentence)):
+
+    if sentence[i].lower() in ["is", "am", "are", "was", "were"]:
+        tags[i] = "VB"
+
+    elif sentence[i].endswith("ing"):
+        tags[i] = "VBG"
+
+    elif sentence[i].endswith("ed"):
+        tags[i] = "VBD"
+
+print("\nAfter Transformation")
+
+for word, tag in zip(sentence, tags):
+    print(word, ":", tag)
