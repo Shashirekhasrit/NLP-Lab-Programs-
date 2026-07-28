@@ -1,0 +1,43 @@
+# Subject-Verb Agreement Checker
+
+subjects = {
+    "he": "singular",
+    "she": "singular",
+    "it": "singular",
+    "john": "singular",
+    "mary": "singular",
+    "they": "plural",
+    "we": "plural",
+    "you": "plural",
+    "i": "singular"
+}
+
+verbs = {
+    "runs": "singular",
+    "plays": "singular",
+    "walks": "singular",
+    "run": "plural",
+    "play": "plural",
+    "walk": "plural"
+}
+
+sentence = input("Enter a sentence: ").lower().split()
+
+if len(sentence) >= 2:
+
+    subject = sentence[0]
+    verb = sentence[1]
+
+    if subject in subjects and verb in verbs:
+
+        if subjects[subject] == verbs[verb]:
+            print("Sentence is grammatically correct.")
+
+        else:
+            print("Subject-Verb Agreement Error.")
+
+    else:
+        print("Unknown subject or verb.")
+
+else:
+    print("Enter a valid sentence.")
