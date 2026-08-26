@@ -1,0 +1,28 @@
+import os
+from openai import OpenAI
+
+MODEL_NAME = "gpt-3.5-turbo"  # any supported chat model works here
+
+
+def generate_text(prompt, max_tokens=150, temperature=0.7):
+    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+    response = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
+    return response.choices[0].message.content.strip()
+
+
+if __name__ == "__main__":
+    if not os.environ.get("OPENAI_API_KEY"):
+        print("Set the OPENAI_API_KEY environment variable before running this script.")
+    else:
+        prompt = "Write a short paragraph explaining what Natural Language Processing is."
+        output = generate_text(prompt)
+        print(f"Prompt: {prompt}\n")
+        print(f"Generated text:\n{output}")
+
+   
