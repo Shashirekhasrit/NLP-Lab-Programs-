@@ -1,0 +1,57 @@
+import re
+
+
+RULES = [
+    ("GREETING", re.compile(r"\b(hi|hello|hey|good morning|good evening|good afternoon)\b", re.I)),
+    ("FAREWELL", re.compile(r"\b(bye|goodbye|see you|good night|take care)\b", re.I)),
+    ("THANK", re.compile(r"\b(thanks|thank you|thx)\b", re.I)),
+    ("APOLOGY", re.compile(r"\b(sorry|apologi[sz]e|my bad|excuse me)\b", re.I)),
+    ("REQUEST", re.compile(r"\b(please|could you|can you|would you|kindly)\b.*", re.I)),
+    ("ACCEPT", re.compile(r"^\s*(yes|yeah|sure|okay|ok|of course|sounds good|no problem)\b", re.I)),
+    ("REJECT", re.compile(r"^\s*(no(?!\s+problem)|nope|not really|i disagree|i can't|i cannot)\b", re.I)),
+    ("QUESTION", re.compile(r"\?\s*$|^\s*(what|why|how|when|where|who|which|is|are|do|does|did|can|could|will)\b", re.I)),
+]
+
+
+def classify_utterance(utterance):
+    text = utterance.strip()
+    for label, pattern in RULES:
+        if pattern.search(text):
+            return label
+    return "STATEMENT"  # default / fallback act
+
+
+def tag_dialog(dialog):
+    """dialog: list of (speaker, utterance) tuples."""
+    results = []
+    for speaker, utterance in dialog:
+        act = classify_utterance(utterance)
+        results.append((speaker, utterance, act))
+    return results
+
+
+if __name__ == "__main__":
+    dialog = [
+        ("A", "Hi there, how are you doing today?"),
+        ("B", "Hello! I'm doing well, thanks for asking."),
+        ("A", "Could you please send me the report by tomorrow?"),
+        ("B", "Sure, I'll send it right away."),
+        ("A", "Great, thank you so much."),
+        ("B", "No problem at all."),
+        ("A", "Sorry, one more thing - is the meeting still at 3pm?"),
+        ("B", "Yes, it is still scheduled for 3pm."),
+        ("A", "Perfect. See you then, goodbye!"),
+        ("B", "Bye, take care!"),
+    ]
+
+    print(f"{'Speaker':8}{'Utterance':55}{'Dialog Act'}")
+    print("-" * 85)
+    for speaker, utterance, act in tag_dialog(dialog):
+        print(f"{speaker:8}{utterance:55}{act}")
+
+    print(
+        "\nNote: This is a rule-based tagger for demonstration. A statistical/ML "
+        "version would extract features (n-grams, POS tags, utterance position, "
+        "speaker turn-taking) and train a classifier such as Naive Bayes or an "
+        "SVM on a labeled corpus like the Switchboard Dialog Act Corpus (SwDA)."
+    )
