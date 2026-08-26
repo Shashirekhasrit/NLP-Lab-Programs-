@@ -1,0 +1,53 @@
+import nltk
+from nltk import pos_tag, word_tokenize, RegexpParser
+from nltk.corpus import wordnet as wn
+
+
+# Grammar: an NP is an optional determiner, any number of adjectives,
+# then one or more nouns.
+NP_GRAMMAR = r"""
+    NP: {<DT>?<JJ.*>*<NN.*>+}
+"""
+
+
+def extract_noun_phrases(sentence):
+    tokens = word_tokenize(sentence)
+    tagged = pos_tag(tokens)
+    parser = RegexpParser(NP_GRAMMAR)
+    tree = parser.parse(tagged)
+
+    noun_phrases = []
+    for subtree in tree.subtrees(filter=lambda t: t.label() == "NP"):
+        words = [word for word, tag in subtree.leaves()]
+        head_noun = words[-1]  # last word in NP is typically the head
+        noun_phrases.append((" ".join(words), head_noun))
+    return noun_phrases, tagged
+
+
+def get_meaning(word):
+    synsets = wn.synsets(word, pos=wn.NOUN)
+    if synsets:
+        return synsets[0].definition()
+    return "No definition found in WordNet."
+
+
+def syntax_driven_semantic_analysis(sentence):
+    noun_phrases, tagged = extract_noun_phrases(sentence)
+    print(f"Sentence : {sentence}")
+    print(f"POS Tags : {tagged}")
+    print("Noun Phrases and their meanings:")
+    for phrase, head in noun_phrases:
+        meaning = get_meaning(head)
+        print(f"  - NP: {phrase!r:30} | Head noun: {head!r:12} | Meaning: {meaning}")
+    print()
+
+
+if __name__ == "__main__":
+    sentences = [
+        "The quick brown fox jumps over the lazy dog.",
+        "A student submitted the final report to the professor.",
+        "The old wooden bridge collapsed during the heavy storm.",
+    ]
+
+    for sentence in sentences:
+        syntax_driven_semantic_analysis(sentence)
