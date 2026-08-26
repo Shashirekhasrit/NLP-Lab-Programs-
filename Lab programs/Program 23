@@ -1,0 +1,80 @@
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+STOPWORDS = set(stopwords.words("english"))
+
+
+def content_words(sentence):
+    return {w.lower() for w in word_tokenize(sentence) if w.isalpha() and w.lower() not in STOPWORDS}
+
+
+def lexical_overlap_score(sentences):
+    overlaps = []
+    for i in range(len(sentences) - 1):
+        w1, w2 = content_words(sentences[i]), content_words(sentences[i + 1])
+        if not w1 or not w2:
+            overlaps.append(0.0)
+            continue
+        overlap = len(w1 & w2) / min(len(w1), len(w2))
+        overlaps.append(overlap)
+    return overlaps
+
+
+def tfidf_coherence_score(sentences):
+    if len(sentences) < 2:
+        return [], 1.0
+    vectorizer = TfidfVectorizer(stop_words="english")
+    vectors = vectorizer.fit_transform(sentences)
+    sims = []
+    for i in range(len(sentences) - 1):
+        sim = cosine_similarity(vectors[i], vectors[i + 1])[0][0]
+        sims.append(sim)
+    avg_score = sum(sims) / len(sims)
+    return sims, avg_score
+
+
+def evaluate_coherence(text):
+    sentences = sent_tokenize(text)
+    if len(sentences) < 2:
+        print("Text too short to evaluate coherence (need >= 2 sentences).")
+        return
+
+    sims, avg_score = tfidf_coherence_score(sentences)
+    overlaps = lexical_overlap_score(sentences)
+
+    print(f"Text: {text}\n")
+    print(f"{'Sentence pair':50} {'CosineSim':>10} {'WordOverlap':>12}")
+    for i in range(len(sentences) - 1):
+        pair_label = f"S{i+1}->S{i+2}"
+        print(f"{pair_label:50} {sims[i]:>10.3f} {overlaps[i]:>12.3f}")
+
+    print(f"\nOverall coherence score (avg cosine similarity): {avg_score:.3f}")
+    if avg_score > 0.15:
+        verdict = "Coherent"
+    elif avg_score > 0.05:
+        verdict = "Moderately coherent"
+    else:
+        verdict = "Low coherence / disjointed"
+    print(f"Verdict: {verdict}")
+    print()
+
+
+if __name__ == "__main__":
+    coherent_text = (
+        "Natural language processing is a field of artificial intelligence that deals with text. "
+        "This field of artificial intelligence focuses on human language and computer interaction. "
+        "Language models used in this field are trained on large amounts of text data. "
+        "These language models help computers understand and generate human language."
+    )
+
+    incoherent_text = (
+        "Natural language processing is a field of artificial intelligence. "
+        "The weather today is quite sunny and warm. "
+        "I enjoy playing basketball on weekends. "
+        "Stock markets fluctuated sharply yesterday."
+    )
+
+    evaluate_coherence(coherent_text)
+    evaluate_coherence(incoherent_text)
