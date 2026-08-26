@@ -1,0 +1,44 @@
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+
+class TFIDFSearchEngine:
+    def __init__(self, documents):
+        self.documents = documents
+        self.vectorizer = TfidfVectorizer(stop_words="english")
+        self.doc_vectors = self.vectorizer.fit_transform(documents)
+
+    def search(self, query, top_k=3):
+        query_vector = self.vectorizer.transform([query])
+        scores = cosine_similarity(query_vector, self.doc_vectors).flatten()
+        ranked_indices = scores.argsort()[::-1][:top_k]
+        results = [(idx, scores[idx], self.documents[idx]) for idx in ranked_indices if scores[idx] > 0]
+        return results
+
+
+if __name__ == "__main__":
+    corpus = [
+        "Natural language processing enables computers to understand human language.",
+        "Machine learning is a subset of artificial intelligence.",
+        "Deep learning uses neural networks with many layers.",
+        "Information retrieval systems rank documents based on relevance to a query.",
+        "TF-IDF is a common technique used in information retrieval and text mining.",
+        "Python is a popular programming language for data science and AI.",
+    ]
+
+    engine = TFIDFSearchEngine(corpus)
+
+    queries = [
+        "information retrieval with TF-IDF",
+        "neural networks and deep learning",
+        "python programming",
+    ]
+
+    for query in queries:
+        print(f"Query: {query!r}")
+        results = engine.search(query, top_k=3)
+        if not results:
+            print("  No relevant documents found.")
+        for rank, (idx, score, doc) in enumerate(results, start=1):
+            print(f"  Rank {rank} (score={score:.4f}): Doc{idx} -> {doc}")
+        print()
