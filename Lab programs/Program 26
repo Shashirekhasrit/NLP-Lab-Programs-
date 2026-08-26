@@ -1,0 +1,24 @@
+def build_translator():
+    # Helsinki-NLP/opus-mt-en-fr is a well-known, lightweight EN->FR model
+    return pipeline("translation_en_to_fr", model="Helsinki-NLP/opus-mt-en-fr")
+
+
+def translate(translator, text):
+    result = translator(text, max_length=200)
+    return result[0]["translation_text"]
+
+
+if __name__ == "__main__":
+    translator = build_translator()
+
+    sentences = [
+        "Natural language processing is a fascinating field.",
+        "How are you doing today?",
+        "I would like to learn French.",
+        "The weather is beautiful this morning.",
+    ]
+
+    for sentence in sentences:
+        translation = translate(translator, sentence)
+        print(f"EN: {sentence}")
+        print(f"FR: {translation}\n")
