@@ -1,0 +1,178 @@
+import re
+ 
+ 
+class Token:
+    def __init__(self, kind, value):
+        self.kind = kind
+        self.value = value
+ 
+    def __repr__(self):
+        return f"{self.kind}:{self.value}"
+ 
+ 
+TOKEN_SPEC = [
+    ("QUANT",  r"forall|exists"),
+    ("NAME",   r"[A-Za-z_][A-Za-z0-9_]*"),
+    ("LPAREN", r"\("),
+    ("RPAREN", r"\)"),
+    ("COMMA",  r","),
+    ("IMPL",   r"->"),
+    ("IFF",    r"<->"),
+    ("AND",    r"&"),
+    ("OR",     r"\|"),
+    ("NOT",    r"~"),
+    ("SKIP",   r"[ \t]+"),
+]
+ 
+MASTER_RE = re.compile("|".join(f"(?P<{name}>{pattern})" for name, pattern in TOKEN_SPEC))
+ 
+ 
+def tokenize(text):
+    tokens = []
+    pos = 0
+    while pos < len(text):
+        m = MASTER_RE.match(text, pos)
+        if not m:
+            raise SyntaxError(f"Unexpected character at position {pos}: {text[pos]!r}")
+        kind = m.lastgroup
+        value = m.group()
+        pos = m.end()
+        if kind == "SKIP":
+            continue
+        if kind == "NAME" and value in ("forall", "exists"):
+            kind = "QUANT"
+        tokens.append(Token(kind, value))
+    tokens.append(Token("EOF", None))
+    return tokens
+ 
+ 
+# ---- AST node types ----
+class Quantifier:
+    def __init__(self, quant, var, body):
+        self.quant, self.var, self.body = quant, var, body
+ 
+    def __repr__(self):
+        return f"{self.quant} {self.var} ({self.body})"
+ 
+ 
+class BinOp:
+    def __init__(self, op, left, right):
+        self.op, self.left, self.right = op, left, right
+ 
+    def __repr__(self):
+        return f"({self.left} {self.op} {self.right})"
+ 
+ 
+class Not:
+    def __init__(self, operand):
+        self.operand = operand
+ 
+    def __repr__(self):
+        return f"~{self.operand}"
+ 
+ 
+class Predicate:
+    def __init__(self, name, args):
+        self.name, self.args = name, args
+ 
+    def __repr__(self):
+        return f"{self.name}({', '.join(self.args)})"
+ 
+ 
+class FOPCParser:
+    """Recursive-descent parser for the grammar above."""
+ 
+    OP_PRECEDENCE = {"IFF": 1, "IMPL": 2, "OR": 3, "AND": 4}
+    OP_SYMBOL = {"IFF": "<->", "IMPL": "->", "OR": "|", "AND": "&"}
+ 
+    def __init__(self, text):
+        self.tokens = tokenize(text)
+        self.pos = 0
+ 
+    def peek(self):
+        return self.tokens[self.pos]
+ 
+    def advance(self):
+        tok = self.tokens[self.pos]
+        self.pos += 1
+        return tok
+ 
+    def expect(self, kind):
+        tok = self.advance()
+        if tok.kind != kind:
+            raise SyntaxError(f"Expected {kind} but got {tok.kind} ({tok.value})")
+        return tok
+ 
+    def parse(self):
+        node = self.parse_formula()
+        self.expect("EOF")
+        return node
+ 
+    def parse_formula(self):
+        if self.peek().kind == "QUANT":
+            quant = self.advance().value
+            var = self.expect("NAME").value
+            body = self.parse_formula()
+            return Quantifier(quant, var, body)
+        return self.parse_binary(0)
+ 
+    def parse_binary(self, min_prec):
+        left = self.parse_term()
+        while True:
+            tok = self.peek()
+            if tok.kind in self.OP_PRECEDENCE and self.OP_PRECEDENCE[tok.kind] >= min_prec:
+                op_kind = self.advance().kind
+                right = self.parse_binary(self.OP_PRECEDENCE[op_kind] + 1)
+                left = BinOp(self.OP_SYMBOL[op_kind], left, right)
+            else:
+                break
+        return left
+ 
+    def parse_term(self):
+        tok = self.peek()
+        if tok.kind == "NOT":
+            self.advance()
+            return Not(self.parse_term())
+        if tok.kind == "LPAREN":
+            self.advance()
+            node = self.parse_formula()
+            self.expect("RPAREN")
+            return node
+        if tok.kind == "NAME":
+            return self.parse_predicate()
+        raise SyntaxError(f"Unexpected token {tok.kind} ({tok.value})")
+ 
+    def parse_predicate(self):
+        name = self.expect("NAME").value
+        self.expect("LPAREN")
+        args = [self.expect("NAME").value]
+        while self.peek().kind == "COMMA":
+            self.advance()
+            args.append(self.expect("NAME").value)
+        self.expect("RPAREN")
+        return Predicate(name, args)
+ 
+ 
+def parse_fopc(expression):
+    parser = FOPCParser(expression)
+    return parser.parse()
+ 
+ 
+if __name__ == "__main__":
+    examples = [
+        "forall x (Man(x) -> Mortal(x))",
+        "exists x (Dog(x) & Brown(x))",
+        "Loves(John, Mary) | Hates(John, Mary)",
+        "~Happy(John)",
+        "forall x exists y (Loves(x, y) -> Likes(y, x))",
+    ]
+ 
+    for expr in examples:
+        print(f"Input : {expr}")
+        try:
+            tree = parse_fopc(expr)
+            print(f"Parsed: {tree}")
+        except SyntaxError as e:
+            print(f"Error : {e}")
+        print()
+ 
