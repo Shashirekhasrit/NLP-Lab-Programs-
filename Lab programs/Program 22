@@ -1,0 +1,92 @@
+import nltk
+from nltk import pos_tag, word_tokenize, sent_tokenize, RegexpParser
+
+NP_GRAMMAR = r"NP: {<DT>?<JJ.*>*<NN.*>+}"
+
+MALE_PRONOUNS = {"he", "him", "his"}
+FEMALE_PRONOUNS = {"she", "her", "hers"}
+NEUTRAL_SINGULAR = {"it", "its"}
+PLURAL_PRONOUNS = {"they", "them", "their", "theirs"}
+
+# Small gender lexicon for demo purposes; in real systems this would use
+# a named-entity gazetteer or gender-guessing library.
+MALE_NAMES = {"john", "peter", "michael", "raj", "mr"}
+FEMALE_NAMES = {"mary", "susan", "priya", "mrs", "ms"}
+
+
+def get_gender(np_text):
+    words = np_text.lower().split()
+    if any(w in MALE_NAMES for w in words):
+        return "male"
+    if any(w in FEMALE_NAMES for w in words):
+        return "female"
+    return "unknown"
+
+
+def extract_candidates(sentence):
+    tokens = word_tokenize(sentence)
+    tagged = pos_tag(tokens)
+    parser = RegexpParser(NP_GRAMMAR)
+    tree = parser.parse(tagged)
+    candidates = []
+    for subtree in tree.subtrees(filter=lambda t: t.label() == "NP"):
+        words = [w for w, t in subtree.leaves()]
+        candidates.append(" ".join(words))
+    return candidates, tagged
+
+
+def pronoun_type(word):
+    w = word.lower()
+    if w in MALE_PRONOUNS:
+        return "male"
+    if w in FEMALE_PRONOUNS:
+        return "female"
+    if w in NEUTRAL_SINGULAR:
+        return "neutral"
+    if w in PLURAL_PRONOUNS:
+        return "plural"
+    return None
+
+
+def resolve_references(text):
+    sentences = sent_tokenize(text)
+    antecedent_history = []  # list of (np_text, gender) most-recent-last
+    resolutions = []
+
+    for sentence in sentences:
+        candidates, tagged = extract_candidates(sentence)
+
+        # Resolve pronouns in this sentence using history so far
+        for word, tag in tagged:
+            ptype = pronoun_type(word)
+            if ptype:
+                antecedent = None
+                # search history most-recent-first for a compatible candidate
+                for np_text, gender in reversed(antecedent_history):
+                    if ptype in ("male", "female") and gender == ptype:
+                        antecedent = np_text
+                        break
+                    if ptype == "neutral" and gender == "unknown":
+                        antecedent = np_text
+                        break
+                resolutions.append((word, sentence, antecedent))
+
+        # add this sentence's NPs to history (after resolving, so a pronoun
+        # doesn't resolve to an NP in its own sentence that follows it)
+        for np_text in candidates:
+            antecedent_history.append((np_text, get_gender(np_text)))
+
+    return resolutions
+
+
+if __name__ == "__main__":
+    text = (
+        "John went to the market. He bought some apples and vegetables. "
+        "Mary called him later. She wanted to know if he needed anything else."
+    )
+
+    print(f"Text: {text}\n")
+    resolutions = resolve_references(text)
+    print("Pronoun resolutions:")
+    for pronoun, sentence, antecedent in resolutions:
+        print(f"  '{pronoun}' in \"{sentence.strip()}\" -> refers to: {antecedent!r}")
